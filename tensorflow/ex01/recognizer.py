@@ -8,6 +8,7 @@ from keras.utils import np_utils
 from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+import copy
 
 
 def read_img(path):
@@ -19,14 +20,37 @@ def read_img(path):
         files = os.listdir(tmp_path)
         for f in files:
             tmp = Image.open(tmp_path + '/' + f)
-            tmp = np.asarray(tmp.convert('L'))
+            # tmp = np.asarray(tmp.convert('L'))
             imgs.append(tmp)
             classes.append(d)
     return(imgs, classes)
 
 
+def rotate_img(img, theta):
+    tmp = copy.deepcopy(img)
+    for i in range(32):
+        for j in range(32):
+            if tmp.getpixel((i, j)) == 0:
+                tmp.putpixel((i, j), 144)
+    tmp = tmp.rotate(theta)
+    for i in range(32):
+        for j in range(32):
+            if tmp.getpixel((i, j)) == 0:
+                tmp.putpixel((i, j), 255)
+    for i in range(32):
+        for j in range(32):
+            if tmp.getpixel((i, j)) == 144:
+                tmp.putpixel((i, j), 0)
+    return(tmp)
+
+
 imgs, classes = read_img(
     '/home/samael/github/hexo-practice-code/tensorflow/ex01/training_set')
+for i in range(len(imgs)):
+    for delta_theta in range(-10, 11):
+        imgs.append(rotate_img(imgs[i], theta=delta_theta))
+        classes.append(classes[i])
+
 imgs = np.array(imgs)
 plt.imshow(imgs[1000], cmap='gray')
 classes[1000]
@@ -84,38 +108,3 @@ for i in range(len(Y_res)):
 plt.imshow(imgs[1], cmap='gray')
 imgs[1].shape
 tmp = Image.open(path + '/' + files[0])
-tmp.rotate(30)
-tmp2 = tmp.rotate(30)
-tmp2
-tmp2 = np.asarray(tmp2.convert('L'))
-plt.imshow(tmp2, cmap='gray')
-tmp2[0]
-tmp1 = np.asarray(tmp.convert('L'))
-
-
-def get_board(img):
-    x = []
-    y = []
-    tmp = []
-    for i in range(32):
-        if np.any(img[i] != np.repeat(255, 32)):
-            tmp.append(i)
-    x.append(np.min(tmp) - 1)
-    x.append(np.max(tmp) + 1)
-    tmp = []
-    for i in range(32):
-        if np.any(img[:, i] != np.repeat(255, 32)):
-            tmp.append(i)
-    y.append(np.min(tmp) - 1)
-    y.append(np.max(tmp) + 1)
-    return(x, y)
-
-
-x, y = get_board(tmp1)
-tmp3 = tmp1.copy()
-tmp3[x[0], y[0]] = 144
-tmp3[x[0], y[1]] = 144
-tmp3[x[1], y[0]] = 144
-tmp3[x[1], y[1]] = 144
-plt.imshow(tmp3, cmap='gray')
-plt.imshow(tmp1, cmap='gray')
