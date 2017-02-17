@@ -51,13 +51,18 @@ for i in range(len(imgs)):
         imgs.append(rotate_img(imgs[i], theta=delta_theta))
         classes.append(classes[i])
 
-imgs = np.array(imgs)
 plt.imshow(imgs[1000], cmap='gray')
 classes[1000]
+len(imgs)
+plt.imshow(imgs[10000], cmap='gray')
+classes[10000]
+for i in range(len(imgs)):
+    imgs[i] = np.asarray(imgs[i].convert('L'))
 encoder = LabelEncoder()
 y = encoder.fit_transform(classes)
 Y = np_utils.to_categorical(y)
 imgs[0]
+imgs = np.array(imgs)
 X = imgs.reshape(len(imgs), 32 * 32)
 X = X / 255
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3)
@@ -105,6 +110,3 @@ for i in range(len(Y_res)):
     plt.subplot(40, 1, i + 1)
     plt.imshow(imags2[i], cmap='gray')
     plt.title("Class {}".format(Y_res[i]))
-plt.imshow(imgs[1], cmap='gray')
-imgs[1].shape
-tmp = Image.open(path + '/' + files[0])
