@@ -21,6 +21,7 @@ def read_img(path):
         for f in files:
             tmp = Image.open(tmp_path + '/' + f)
             # tmp = np.asarray(tmp.convert('L'))
+            tmp.load()
             imgs.append(tmp)
             classes.append(d)
     return(imgs, classes)
@@ -58,6 +59,7 @@ plt.imshow(imgs[10000], cmap='gray')
 classes[10000]
 for i in range(len(imgs)):
     imgs[i] = np.asarray(imgs[i].convert('L'))
+imgs = np.array(imgs)
 encoder = LabelEncoder()
 y = encoder.fit_transform(classes)
 Y = np_utils.to_categorical(y)
