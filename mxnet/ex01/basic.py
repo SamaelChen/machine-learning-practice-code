@@ -109,3 +109,4 @@ y = mod.predict(data.get_iter(batch_size))
 y.shape
 y
 y.asnumpy()
+data.get_iter(batch_size)
