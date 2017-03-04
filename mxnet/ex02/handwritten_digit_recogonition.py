@@ -62,7 +62,7 @@ mlp = mx.sym.SoftmaxOutput(data=fc3, name='softmax')
 shape = {'data': (batch_size, 1, 28, 28)}
 mx.viz.plot_network(symbol=mlp, shape=shape)
 logging.getLogger().setLevel(logging.DEBUG)
-model = mx.mod.Module(symbol=mlp, context=mx.cpu(), data_names=[
+model = mx.mod.Module(symbol=mlp, context=mx.gpu(), data_names=[
                       'data'], label_names=['softmax_label'])
 model.fit(train_data=train_iter, eval_data=val_iter, optimizer='sgd',
           optimizer_params={'learning_rate': 0.1}, eval_metric='acc', num_epoch=10)
@@ -93,7 +93,7 @@ lenet = mx.sym.SoftmaxOutput(data=fc2, name='softmax')
 mx.viz.plot_network(symbol=lenet, shape=shape)
 logging.getLogger().setLevel(logging.DEBUG)
 conv_mod = mx.mod.Module(symbol=lenet, data_names=['data'], label_names=[
-                         'softmax_label'], context=mx.cpu())
+                         'softmax_label'], context=mx.gpu())
 conv_mod.fit(train_data=train_iter, eval_data=val_iter, optimizer='sgd',
              optimizer_params={'learning_rate': 0.1}, eval_metric='acc', num_epoch=10)
 prob = conv_mod.predict(val_iter).asnumpy()[0]
