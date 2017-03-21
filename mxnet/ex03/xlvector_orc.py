@@ -83,15 +83,79 @@ class OCRIter(mx.io.DataIter):
         pass
 
 
-tmp = OCRIter(10, 8, 4, 30, 80)
-tmp.captcha
-for i in tmp:
-    a = i
-a
-a.data
-b = a.data
-c = a.label
+def get_ocrnet():
+    data = mx.symbol.Variable('data')
+    label = mx.symbol.Variable('softmax_label')
+    conv1 = mx.symbol.Convolution(data=data, kernel=(5, 5), num_filter=32)
+    pool1 = mx.symbol.Pooling(
+        data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
+    relu1 = mx.symbol.Activation(data=pool1, act_type="relu")
 
-plt.imshow(b[0][1][2].asnumpy())
-plt.imshow(b[0][1][0].asnumpy())
-c[0].asnumpy()
+    conv2 = mx.symbol.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
+    pool2 = mx.symbol.Pooling(
+        data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu2 = mx.symbol.Activation(data=pool2, act_type="relu")
+
+    conv3 = mx.symbol.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
+    pool3 = mx.symbol.Pooling(
+        data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu3 = mx.symbol.Activation(data=pool3, act_type="relu")
+
+    conv4 = mx.symbol.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
+    pool4 = mx.symbol.Pooling(
+        data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu4 = mx.symbol.Activation(data=pool4, act_type="relu")
+
+    flatten = mx.symbol.Flatten(data=relu4)
+    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=256)
+    fc21 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc22 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc23 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc24 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc2 = mx.symbol.Concat(*[fc21, fc22, fc23, fc24], dim=0)
+    label = mx.symbol.transpose(data=label)
+    label = mx.symbol.Reshape(data=label, target_shape=(0, ))
+    return mx.symbol.SoftmaxOutput(data=fc2, label=label, name="softmax")
+
+
+def Accuracy(label, pred):
+    label = label.T.reshape((-1, ))
+    hit = 0
+    total = 0
+    for i in range(pred.shape[0] / 4):
+        ok = True
+        for j in range(4):
+            k = i * 4 + j
+            if np.argmax(pred[k]) != int(label[k]):
+                ok = False
+                break
+        if ok:
+            hit += 1
+        total += 1
+    return 1.0 * hit / total
+
+
+if __name__ == '__main__':
+    network = get_ocrnet()
+    # devs = [mx.gpu(i) for i in range(1)]
+    model = mx.model.FeedForward(ctx=mx.cpu(),
+                                 symbol=network,
+                                 num_epoch=1,
+                                 learning_rate=0.001,
+                                 wd=0.00001,
+                                 initializer=mx.init.Xavier(
+                                     factor_type="in", magnitude=2.34),
+                                 momentum=0.9)
+
+    batch_size = 8
+    data_train = OCRIter(100000, batch_size, 4, 30, 80)
+    data_test = OCRIter(1000, batch_size, 4, 30, 80)
+
+    import logging
+    head = '%(asctime)-15s %(message)s'
+    logging.basicConfig(level=logging.DEBUG, format=head)
+
+    model.fit(X=data_train, eval_data=data_test, eval_metric=Accuracy,
+              batch_end_callback=mx.callback.Speedometer(batch_size, 50),)
+
+    model.save("cnn-ocr")
