@@ -15,10 +15,8 @@ class Solution(object):
         :type n: int
         :rtype: int
         """
+        return sum(list(map(int, bin(n)[2:])))
 
 
-
-tmp = np.array(list(bin(11)[2:]))
-tmp
-tmp.dtype = 'int'
-tmp
+s = Solution()
+s.hammingWeight(11)
