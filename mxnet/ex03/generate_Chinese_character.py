@@ -6,6 +6,7 @@ import math
 import string
 import codecs
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class RandomChar():
@@ -32,7 +33,7 @@ class RandomChar():
 class ImageChar():
 
     def __init__(self, fontColor=(0, 0, 0),
-                 size=(100, 40),
+                 size=(100, 20),
                  fontPath='wqy-microhei.ttc',
                  bgColor=(255, 255, 255),
                  fontSize=20):
@@ -45,7 +46,7 @@ class ImageChar():
         self.image = Image.new('RGB', size, bgColor)
 
     def rotate(self):
-        self.image.rotate(random.randint(0, 30), expand=0)
+        self.image.rotate(random.randint(-30, 30))
 
     def drawText(self, pos, txt, fill):
         draw = ImageDraw.Draw(self.image)
@@ -57,10 +58,14 @@ class ImageChar():
     #             random.randint(0, 255),
     #             random.randint(0, 255))
 
-    # def randPoint(self):
-    #     (width, height) = self.size
-    #     return (random.randint(0, width), random.randint(0, height))
-    #
+    def randPoint(self, num):
+        (width, height) = self.size
+        draw = ImageDraw.Draw(self.image)
+        for i in range(0, num):
+            draw.point([random.randint(0, width), random.randint(0, height)], 0)
+        # return (random.randint(0, width), random.randint(0, height)
+        del draw
+
     # def randLine(self, num):
     #     draw = ImageDraw.Draw(self.image)
     #     for i in range(0, num):
@@ -76,7 +81,7 @@ class ImageChar():
             self.drawText((x, random.randint(-5, 5)),
                           RandomChar().GB2312(), (0, 0, 0))
             self.rotate()
-        # self.randLine(18)
+        self.randPoint(18)
 
     def save(self, path):
         self.image.save(path)
@@ -85,5 +90,6 @@ class ImageChar():
 ic = ImageChar(fontPath='ukai.ttc')
 ic.randChinese(3)
 plt.imshow(ic.image, cmap='gray')
+plt.imshow(np.array(ic.image), cmap='gray')
 ic.save('1.jpeg')
 print(RandomChar.GB2312())
