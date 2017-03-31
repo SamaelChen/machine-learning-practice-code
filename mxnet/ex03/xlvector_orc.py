@@ -159,3 +159,10 @@ if __name__ == '__main__':
               batch_end_callback=mx.callback.Speedometer(batch_size, 50),)
 
     model.save("cnn-ocr")
+
+data_train.getdata()
+data_train.getlabel()
+data_train.iter_next()
+data_train.provide_data
+data_train.provide_label
+data_train.__iter__()
