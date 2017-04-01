@@ -33,10 +33,17 @@ def gen_rand():
     return buf
 
 
+tmp = gen_rand()
+
 def get_label(buf):
     a = [int(x) for x in buf]
     return np.array(a)
 
+
+get_label(tmp)
+captcha = ImageCaptcha()
+width = 80
+height = 30
 
 def gen_sample(captcha, width, height):
     num = gen_rand()
@@ -48,6 +55,10 @@ def gen_sample(captcha, width, height):
     img = img.transpose(2, 0, 1)
     return (num, img)
 
+
+img.shape
+
+gen_sample(captcha, 80, 30)
 
 class OCRIter(mx.io.DataIter):
 
@@ -165,4 +176,5 @@ data_train.getlabel()
 data_train.iter_next()
 data_train.provide_data
 data_train.provide_label
-data_train.__iter__()
+data_train.provide_data[0][1]
+gen_sample(ImageCaptcha(), 80, 30)

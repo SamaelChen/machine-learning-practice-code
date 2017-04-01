@@ -7,6 +7,7 @@ import string
 import codecs
 import matplotlib.pyplot as plt
 import numpy as np
+import mxnet as mx
 
 
 class RandomChar():
@@ -34,7 +35,7 @@ class ImageChar():
 
     def __init__(self, fontColor=(255, 255, 255),
                  size=(100, 20),
-                 fontPath='wqy-microhei.ttc',
+                 fontPath='ukai.ttc',
                  bgColor=(0, 0, 0),
                  fontSize=20):
         self.size = size
@@ -85,9 +86,14 @@ class ImageChar():
         gap = 5
         start = 0
         label = []
-        for i in range(0, num):
-            char, val = RandomChar().GB2312()
-            x = start + self.fontSize * i + random.randint(0, gap) + gap * i
+        while len(label) < num:
+            try:
+                char, val = RandomChar().GB2312()
+            except UnicodeDecodeError:
+                # print(len(label))
+                continue
+            x = start + self.fontSize * \
+                len(label) + random.randint(0, gap) + gap * len(label)
             self.drawTextV2((x, random.randint(-3, 2)),
                             char, (255, 255, 255))
             # self.image.rotate(180)
@@ -100,9 +106,179 @@ class ImageChar():
         self.image.save(path)
 
 
+class OCRBatch(object):
+
+    def __init__(self, data_names, data, label_names, label):
+        self.data = data
+        self.label = label
+        self.data_names = data_names
+        self.label_names = label_names
+
+    @property
+    def provide_data(self):
+        return [(n, x.shape) for n, x in zip(self.data_names, self.data)]
+
+    @property
+    def provide_label(self):
+        return [(n, x.shape) for n, x in zip(self.label_names, self.label)]
+
+    def all_data(self):
+        return self.data
+
+class OCRIter(mx.io.DataIter):
+
+    def __init__(self, count, batch_size, num_label):
+        super(OCRIter, self).__init__()
+        # self.ic = ImageChar()
+
+        self.batch_size = batch_size
+        self.count = count
+        self.num_label = num_label
+        self.provide_data = [('data', (batch_size, 1, 20, 100))]
+        self.provide_label = [('softmax_label', (self.batch_size, num_label))]
+
+    def __iter__(self):
+        for k in range(int(self.count / self.batch_size)):
+            data = []
+            label = []
+            for i in range(self.batch_size):
+                ic = ImageChar()
+                # num = self.ic.randChinese(self.num_label)
+                num = ic.randChinese(self.num_label)
+                # self.ic.save(str(k) + str(i) + '.jpg')
+                # tmp = np.array(self.ic.image.convert("L"))
+                ic.save(str(k) + str(i) + '.jpg')
+                tmp = np.array(ic.image.convert("L"))
+                tmp = 255 - tmp
+                data.append(tmp)
+            data_all = [mx.nd.array(data)]
+            label_all = [mx.nd.array(label)]
+            data_names = ['data']
+            label_names = ['softmax_label']
+
+            data_batch = OCRBatch(data_names, data_all, label_names, label_all)
+            yield data_batch
+
+    def reset(self):
+        pass
+
+
+def get_ocrnet():
+    data = mx.symbol.Variable('data')
+    label = mx.symbol.Variable('softmax_label')
+    conv1 = mx.symbol.Convolution(data=data, kernel=(5, 5), num_filter=32)
+    pool1 = mx.symbol.Pooling(
+        data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
+    relu1 = mx.symbol.Activation(data=pool1, act_type="relu")
+
+    conv2 = mx.symbol.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
+    pool2 = mx.symbol.Pooling(
+        data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu2 = mx.symbol.Activation(data=pool2, act_type="relu")
+
+    conv3 = mx.symbol.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
+    pool3 = mx.symbol.Pooling(
+        data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu3 = mx.symbol.Activation(data=pool3, act_type="relu")
+
+    conv4 = mx.symbol.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
+    pool4 = mx.symbol.Pooling(
+        data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu4 = mx.symbol.Activation(data=pool4, act_type="relu")
+
+    flatten = mx.symbol.Flatten(data=relu4)
+    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=256)
+    fc21 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc22 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc23 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
+    fc2 = mx.symbol.Concat(*[fc21, fc22, fc23], dim=0)
+    label = mx.symbol.transpose(data=label)
+    label = mx.symbol.Reshape(data=label, target_shape=(0, ))
+    return mx.symbol.SoftmaxOutput(data=fc2, label=label, name="softmax")
+
+
+def Accuracy(label, pred):
+    label = label.T.reshape((-1, ))
+    hit = 0
+    total = 0
+    for i in range(pred.shape[0] / 4):
+        ok = True
+        for j in range(4):
+            k = i * 4 + j
+            if np.argmax(pred[k]) != int(label[k]):
+                ok = False
+                break
+        if ok:
+            hit += 1
+        total += 1
+    return 1.0 * hit / total
+
+
+batch_size = 8
+data_train = OCRIter(32, batch_size, 3)
+for i in data_train:
+    print(data_train)
+type(i)
+i.provide_data
+tmp = i.all_data()
+tmp[0][0].asnumpy()
+data_train = OCRIter(100000, batch_size, 3)
+data_test = OCRIter(1000, batch_size, 3)
+shape = {'data': (8, 1, 20, 100)}
+mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
+mx.viz.plot_network(get_ocrnet())
+model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
+                      data_names=['data'], label_names=['softmax_label'])
+
+model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
+          optimizer_params={'learning_rate': 0.1},
+          eval_metric='acc', num_epoch=10)
+
+if __name__ == '__main__':
+    network = get_ocrnet()
+    # devs = [mx.gpu(i) for i in range(1)]
+    model = mx.model.FeedForward(ctx=mx.cpu(),
+                                 symbol=network,
+                                 num_epoch=1,
+                                 learning_rate=0.001,
+                                 wd=0.00001,
+                                 initializer=mx.init.Xavier(
+                                     factor_type="in", magnitude=2.34),
+                                 momentum=0.9)
+
+    batch_size = 8
+    data_train = OCRIter(100000, batch_size, 3)
+    data_test = OCRIter(1000, batch_size, 3)
+
+    import logging
+    head = '%(asctime)-15s %(message)s'
+    logging.basicConfig(level=logging.DEBUG, format=head)
+
+    model.fit(X=data_train, eval_data=data_test, eval_metric=Accuracy,
+              batch_end_callback=mx.callback.Speedometer(batch_size, 50),)
+
+    model.save("cnn-ocr")
+
+
+batch_size = 8
+data_train = OCRIter(80, batch_size, 3)
+data_train.provide_data
+for i in data_train:
+    print(data_train)
+
+data_train.getdata()
+
 RandomChar().GB2312()
+RandomChar().Unicode()
 ic = ImageChar(fontPath='ukai.ttc')
 ic.randChinese(3)
+ic.image
+tmp = np.array(ic.image)
+tmp.shape
+a = []
+for i in range(100):
+    a.append(ic.randChinese(3))
+a
 plt.imshow(ic.image, cmap='gray')
 plt.imshow(np.array(ic.image), cmap='gray')
 tmp = np.array(ic.image.convert('L'))
@@ -112,5 +288,3 @@ tmp = 255 - tmp
 tmp[tmp >= 200] = 255
 tmp[tmp < 200] = 0
 plt.imshow(tmp, cmap='gray')
-ic.rotate()
-ic.image

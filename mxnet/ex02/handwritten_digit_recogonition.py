@@ -45,6 +45,10 @@ def to4d(img):
     return img.reshape(img.shape[0], 1, 28, 28).astype(np.float32) / 255
 
 
+to4d(train_img).shape
+train_img.shape
+train_img[0].shape
+type(train_img[0])
 batch_size = 100
 train_iter = mx.io.NDArrayIter(
     to4d(train_img), train_lbl, batch_size, shuffle=True)
@@ -65,7 +69,8 @@ logging.getLogger().setLevel(logging.DEBUG)
 model = mx.mod.Module(symbol=mlp, context=mx.gpu(), data_names=[
                       'data'], label_names=['softmax_label'])
 model.fit(train_data=train_iter, eval_data=val_iter, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.1}, eval_metric='acc', num_epoch=10)
+          optimizer_params={'learning_rate': 0.1},
+          eval_metric='acc', num_epoch=10)
 plt.imshow(val_img[0], cmap='Greys_r')
 prob = model.predict(val_iter).asnumpy()[0]
 assert max(prob) > 0.99, "Low prediction accuracy."
@@ -95,5 +100,6 @@ logging.getLogger().setLevel(logging.DEBUG)
 conv_mod = mx.mod.Module(symbol=lenet, data_names=['data'], label_names=[
                          'softmax_label'], context=mx.gpu())
 conv_mod.fit(train_data=train_iter, eval_data=val_iter, optimizer='sgd',
-             optimizer_params={'learning_rate': 0.1}, eval_metric='acc', num_epoch=10)
+             optimizer_params={'learning_rate': 0.1},
+             eval_metric='acc', num_epoch=10)
 prob = conv_mod.predict(val_iter).asnumpy()[0]
