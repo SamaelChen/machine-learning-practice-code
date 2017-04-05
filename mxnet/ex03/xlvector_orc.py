@@ -56,8 +56,6 @@ def gen_sample(captcha, width, height):
     return (num, img)
 
 
-img.shape
-
 gen_sample(captcha, 80, 30)
 
 class OCRIter(mx.io.DataIter):
@@ -177,4 +175,6 @@ data_train.iter_next()
 data_train.provide_data
 data_train.provide_label
 data_train.provide_data[0][1]
-gen_sample(ImageCaptcha(), 80, 30)
+gen_sample(ImageCaptcha(), 30, 80)
+shape = {'data': (8, 4, 30, 80), 'softmax_label': (8, 4)}
+mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)

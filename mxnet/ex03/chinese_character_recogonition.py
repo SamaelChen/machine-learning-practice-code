@@ -19,11 +19,13 @@ class RandomChar():
 
     @staticmethod
     def GB2312():
-        head = random.randint(0xB0, 0xCF)
-        body = random.randint(0xA, 0xF)
-        tail = random.randint(0, 0xF)
+        # head = random.randint(0xB0, 0xCF)
+        # body = random.randint(0xA, 0xF)
+        # tail = random.randint(0, 0xF)
         # val = (head &lt; &lt; 8) | (body & lt; & lt; 4) | tail
-        val = (head << 8) | (body << 4) | tail
+        head = random.randint(0xB0, 0xCF)
+        body = random.randint(0xA1, 0xFE)
+        val = (head << 8) | body
         str = "%x" % val
         str = codecs.decode(str, 'hex')
         str = str.decode('gb2312')
@@ -134,7 +136,7 @@ class OCRIter(mx.io.DataIter):
         self.batch_size = batch_size
         self.count = count
         self.num_label = num_label
-        self.provide_data = [('data', (batch_size, 1, 20, 100))]
+        self.provide_data = [('data', (batch_size, 1, 100, 20))]
         self.provide_label = [('softmax_label', (self.batch_size, num_label))]
 
     def __iter__(self):
@@ -147,10 +149,13 @@ class OCRIter(mx.io.DataIter):
                 num = ic.randChinese(self.num_label)
                 # self.ic.save(str(k) + str(i) + '.jpg')
                 # tmp = np.array(self.ic.image.convert("L"))
-                ic.save(str(k) + str(i) + '.jpg')
+                # ic.save(str(k) + str(i) + '.jpg')
                 tmp = np.array(ic.image.convert("L"))
                 tmp = 255 - tmp
+                tmp = tmp.reshape(1, 100, 20)
+                # print(tmp.shape)
                 data.append(tmp)
+                label.append(np.array(num))
             data_all = [mx.nd.array(data)]
             label_all = [mx.nd.array(label)]
             data_names = ['data']
@@ -164,44 +169,44 @@ class OCRIter(mx.io.DataIter):
 
 
 def get_ocrnet():
-    data = mx.symbol.Variable('data')
-    label = mx.symbol.Variable('softmax_label')
-    conv1 = mx.symbol.Convolution(data=data, kernel=(5, 5), num_filter=32)
-    pool1 = mx.symbol.Pooling(
+    data = mx.sym.Variable('data')
+    label = mx.sym.Variable('softmax_label')
+    conv1 = mx.sym.Convolution(data=data, kernel=(5, 5), num_filter=32)
+    pool1 = mx.sym.Pooling(
         data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
-    relu1 = mx.symbol.Activation(data=pool1, act_type="relu")
+    relu1 = mx.sym.Activation(data=pool1, act_type="relu")
 
-    conv2 = mx.symbol.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
-    pool2 = mx.symbol.Pooling(
+    conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
+    pool2 = mx.sym.Pooling(
         data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu2 = mx.symbol.Activation(data=pool2, act_type="relu")
+    relu2 = mx.sym.Activation(data=pool2, act_type="relu")
 
-    conv3 = mx.symbol.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
-    pool3 = mx.symbol.Pooling(
+    conv3 = mx.sym.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
+    pool3 = mx.sym.Pooling(
         data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu3 = mx.symbol.Activation(data=pool3, act_type="relu")
+    relu3 = mx.sym.Activation(data=pool3, act_type="relu")
 
-    conv4 = mx.symbol.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
-    pool4 = mx.symbol.Pooling(
+    conv4 = mx.sym.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
+    pool4 = mx.sym.Pooling(
         data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu4 = mx.symbol.Activation(data=pool4, act_type="relu")
+    relu4 = mx.sym.Activation(data=pool4, act_type="relu")
 
-    flatten = mx.symbol.Flatten(data=relu4)
-    fc1 = mx.symbol.FullyConnected(data=flatten, num_hidden=256)
-    fc21 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
-    fc22 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
-    fc23 = mx.symbol.FullyConnected(data=fc1, num_hidden=10)
-    fc2 = mx.symbol.Concat(*[fc21, fc22, fc23], dim=0)
-    label = mx.symbol.transpose(data=label)
-    label = mx.symbol.Reshape(data=label, target_shape=(0, ))
-    return mx.symbol.SoftmaxOutput(data=fc2, label=label, name="softmax")
+    flatten = mx.sym.Flatten(data=relu4)
+    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=256)
+    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc2 = mx.sym.Concat(*[fc21, fc22, fc23], dim=0)
+    label = mx.sym.transpose(data=label)
+    label = mx.sym.Reshape(data=label, target_shape=(0, ))
+    return mx.sym.SoftmaxOutput(data=fc2, label=label, name="softmax")
 
 
 def Accuracy(label, pred):
     label = label.T.reshape((-1, ))
     hit = 0
     total = 0
-    for i in range(pred.shape[0] / 4):
+    for i in range(int(pred.shape[0] / 4)):
         ok = True
         for j in range(4):
             k = i * 4 + j
@@ -214,17 +219,21 @@ def Accuracy(label, pred):
     return 1.0 * hit / total
 
 
-batch_size = 8
+batch_size = 64
 data_train = OCRIter(32, batch_size, 3)
 for i in data_train:
     print(data_train)
 type(i)
 i.provide_data
+i.provide_label
 tmp = i.all_data()
 tmp[0][0].asnumpy()
+tmp[0][0].shape
+tmp[0].shape
+type(tmp[0])
 data_train = OCRIter(100000, batch_size, 3)
 data_test = OCRIter(1000, batch_size, 3)
-shape = {'data': (8, 1, 20, 100)}
+shape = {"data": (batch_size, 1, 100, 20), "softmax_label": (batch_size, 3)}
 mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
 mx.viz.plot_network(get_ocrnet())
 model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
@@ -232,7 +241,7 @@ model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
           optimizer_params={'learning_rate': 0.1},
-          eval_metric='acc', num_epoch=10)
+          eval_metric='acc', num_epoch=100)
 
 if __name__ == '__main__':
     network = get_ocrnet()
