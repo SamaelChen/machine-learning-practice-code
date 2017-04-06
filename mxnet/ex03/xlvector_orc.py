@@ -25,6 +25,11 @@ class OCRBatch(object):
     def provide_label(self):
         return [(n, x.shape) for n, x in zip(self.label_names, self.label)]
 
+    def all_data(self):
+        return self.data
+
+    def all_label(self):
+        return self.label
 
 def gen_rand():
     buf = ""
@@ -34,6 +39,7 @@ def gen_rand():
 
 
 tmp = gen_rand()
+tmp
 
 def get_label(buf):
     a = [int(x) for x in buf]
@@ -55,8 +61,6 @@ def gen_sample(captcha, width, height):
     img = img.transpose(2, 0, 1)
     return (num, img)
 
-
-gen_sample(captcha, 80, 30)
 
 class OCRIter(mx.io.DataIter):
 

@@ -127,6 +127,10 @@ class OCRBatch(object):
     def all_data(self):
         return self.data
 
+    def all_label(self):
+        return self.label
+
+
 class OCRIter(mx.io.DataIter):
 
     def __init__(self, count, batch_size, num_label):
@@ -136,8 +140,9 @@ class OCRIter(mx.io.DataIter):
         self.batch_size = batch_size
         self.count = count
         self.num_label = num_label
-        self.provide_data = [('data', (batch_size, 1, 100, 20))]
-        self.provide_label = [('softmax_label', (self.batch_size, num_label))]
+        self.provide_data = [('data', (self.batch_size, 1, 100, 20))]
+        self.provide_label = [('softmax_label',
+                               (self.batch_size, self.num_label))]
 
     def __iter__(self):
         for k in range(int(self.count / self.batch_size)):
@@ -151,7 +156,7 @@ class OCRIter(mx.io.DataIter):
                 # tmp = np.array(self.ic.image.convert("L"))
                 # ic.save(str(k) + str(i) + '.jpg')
                 tmp = np.array(ic.image.convert("L"))
-                tmp = 255 - tmp
+                tmp = (255 - tmp) / 255
                 tmp = tmp.reshape(1, 100, 20)
                 # print(tmp.shape)
                 data.append(tmp)
@@ -206,10 +211,10 @@ def Accuracy(label, pred):
     label = label.T.reshape((-1, ))
     hit = 0
     total = 0
-    for i in range(int(pred.shape[0] / 4)):
+    for i in range(int(pred.shape[0] / 3)):
         ok = True
-        for j in range(4):
-            k = i * 4 + j
+        for j in range(3):
+            k = i * 3 + j
             if np.argmax(pred[k]) != int(label[k]):
                 ok = False
                 break
@@ -219,36 +224,38 @@ def Accuracy(label, pred):
     return 1.0 * hit / total
 
 
-batch_size = 64
+batch_size = 8
 data_train = OCRIter(32, batch_size, 3)
 for i in data_train:
     print(data_train)
 type(i)
 i.provide_data
 i.provide_label
-tmp = i.all_data()
-tmp[0][0].asnumpy()
-tmp[0][0].shape
+tmp = i.all_label()
+tmp[0][0].asnumpy().shape
+tmp[0].reshape((24, ))[0:10].asnumpy()
+help(mx.sym.transpose)
+mx.ndarray.transpose(tmp[0])
 tmp[0].shape
 type(tmp[0])
 data_train = OCRIter(100000, batch_size, 3)
 data_test = OCRIter(1000, batch_size, 3)
 shape = {"data": (batch_size, 1, 100, 20), "softmax_label": (batch_size, 3)}
 mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
-mx.viz.plot_network(get_ocrnet())
 model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
                       data_names=['data'], label_names=['softmax_label'])
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.1},
-          eval_metric='acc', num_epoch=100)
+          optimizer_params={'learning_rate': 0.01},
+          eval_metric=Accuracy, num_epoch=100,
+          batch_end_callback=mx.callback.Speedometer(batch_size, 50))
 
 if __name__ == '__main__':
     network = get_ocrnet()
     # devs = [mx.gpu(i) for i in range(1)]
     model = mx.model.FeedForward(ctx=mx.cpu(),
                                  symbol=network,
-                                 num_epoch=1,
+                                 num_epoch=20,
                                  learning_rate=0.001,
                                  wd=0.00001,
                                  initializer=mx.init.Xavier(
