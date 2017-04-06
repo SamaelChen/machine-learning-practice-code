@@ -221,7 +221,7 @@ def Accuracy(label, pred):
         if ok:
             hit += 1
         total += 1
-    return 1.0 * hit / total
+    return hit / total
 
 
 batch_size = 8
