@@ -23,8 +23,8 @@ class RandomChar():
         # body = random.randint(0xA, 0xF)
         # tail = random.randint(0, 0xF)
         # val = (head &lt; &lt; 8) | (body & lt; & lt; 4) | tail
-        head = random.randint(0xB0, 0xD7)
-        body = random.randint(0xA1, 0xFE)
+        head = 0xB0
+        body = random.randint(0xA1, 0xAA)
         val = (head << 8) | body
         str = "%x" % val
         str = codecs.decode(str, 'hex')
@@ -34,12 +34,13 @@ class RandomChar():
 
 
 s = []
-for head in range(0xB0, 0xD7 + 1):
-    for body in range(0xA1, 0xFE + 1):
+for head in range(0xB0, 0xB1):
+    for body in range(0xA1, 0xAA + 1):
         val = (head << 8) | body
         s.append(val)
 
-s = s[:-5]
+# s = s[:-5]
+len(s)
 
 class ImageChar():
 
@@ -135,9 +136,6 @@ class OCRBatch(object):
     def all_data(self):
         return self.data
 
-    def all_label(self):
-        return self.label
-
 
 class OCRIter(mx.io.DataIter):
 
@@ -148,23 +146,22 @@ class OCRIter(mx.io.DataIter):
         self.batch_size = batch_size
         self.count = count
         self.num_label = num_label
-        self.provide_data = [('data', (self.batch_size, 1, 100, 20))]
-        self.provide_label = [('softmax_label',
-                               (self.batch_size, self.num_label))]
+        self.provide_data = [('data', (batch_size, 1, 100, 20))]
+        self.provide_label = [('softmax_label', (self.batch_size, num_label))]
 
     def __iter__(self):
         for k in range(int(self.count / self.batch_size)):
             data = []
             label = []
             for i in range(self.batch_size):
-                ic = ImageChar()
+                ic = ImageChar(fontPath='/home/plkj/ukai.ttc')
                 # num = self.ic.randChinese(self.num_label)
                 num = ic.randChinese(self.num_label)
                 # self.ic.save(str(k) + str(i) + '.jpg')
                 # tmp = np.array(self.ic.image.convert("L"))
                 # ic.save(str(k) + str(i) + '.jpg')
                 tmp = np.array(ic.image.convert("L"))
-                tmp = (255 - tmp) / 255
+                tmp = 255 - tmp
                 tmp = tmp.reshape(1, 100, 20)
                 # print(tmp.shape)
                 data.append(tmp)
@@ -206,9 +203,9 @@ def get_ocrnet():
 
     flatten = mx.sym.Flatten(data=relu4)
     fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=256)
-    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
-    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
-    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
+    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
+    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
     fc2 = mx.sym.Concat(*[fc21, fc22, fc23], dim=0)
     label = mx.sym.transpose(data=label)
     label = mx.sym.Reshape(data=label, target_shape=(0, ))
@@ -226,9 +223,9 @@ def Accuracy(label, pred):
         for j in range(3):
             k = i * 3 + j
             # print(k)
-            print(np.argmax(pred[k]))
-            print(int(label[k]))
-            print("========")
+#             print(np.argmax(pred[k]))
+#             print(int(label[k]))
+#             print("========next========")
             if np.argmax(pred[k]) != int(label[k]):
                 ok = False
                 break
@@ -238,84 +235,17 @@ def Accuracy(label, pred):
     return hit / total
 
 
-batch_size = 8
-data_train = OCRIter(32, batch_size, 3)
-for i in data_train:
-    print(data_train)
-type(i)
-i.provide_data
-i.provide_label
-tmp = i.all_label()
-tmp[0][0].asnumpy()
-tmp[0].reshape((24, ))[0:10].asnumpy()
-help(mx.sym.transpose)
-mx.ndarray.transpose(tmp[0])
-tmp[0].shape
-type(tmp[0])
-data_train = OCRIter(100, batch_size, 3)
-data_test = OCRIter(10, batch_size, 3)
-shape = {"data": (batch_size, 1, 100, 20), "softmax_label": (batch_size, 3)}
-mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
-model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
+batch_size = 64
+data_train = OCRIter(1000000, batch_size, 3)
+data_test = OCRIter(1000, batch_size, 3)
+import logging
+logging.getLogger().setLevel(logging.DEBUG)
+model = mx.mod.Module(symbol=get_ocrnet(), context=mx.gpu(),
                       data_names=['data'], label_names=['softmax_label'])
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.01},
-          eval_metric=Accuracy, num_epoch=1,
+          optimizer_params={'learning_rate': 0.001},
+          eval_metric=Accuracy, num_epoch=10,
           batch_end_callback=mx.callback.Speedometer(batch_size, 50))
 
-
-if __name__ == '__main__':
-    network = get_ocrnet()
-    # devs = [mx.gpu(i) for i in range(1)]
-    model = mx.model.FeedForward(ctx=mx.cpu(),
-                                 symbol=network,
-                                 num_epoch=2,
-                                 learning_rate=0.001,
-                                 wd=0.00001,
-                                 initializer=mx.init.Xavier(
-                                     factor_type="in", magnitude=2.34),
-                                 momentum=0.9)
-
-    batch_size = 8
-    data_train = OCRIter(100000, batch_size, 3)
-    data_test = OCRIter(1000, batch_size, 3)
-
-    import logging
-    head = '%(asctime)-15s %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=head)
-
-    model.fit(X=data_train, eval_data=data_test, eval_metric=Accuracy,
-              batch_end_callback=mx.callback.Speedometer(batch_size, 50),)
-
-    model.save("cnn-ocr")
-
-
-batch_size = 8
-data_train = OCRIter(80, batch_size, 3)
-data_train.provide_data
-for i in data_train:
-    print(data_train)
-
-data_train.getdata()
-
-RandomChar().GB2312()
-RandomChar().Unicode()
-ic = ImageChar(fontPath='ukai.ttc')
-ic.randChinese(3)
-ic.image
-tmp = np.array(ic.image)
-tmp.shape
-a = []
-for i in range(100):
-    a.append(ic.randChinese(3))
-a
-plt.imshow(ic.image, cmap='gray')
-plt.imshow(np.array(ic.image), cmap='gray')
-tmp = np.array(ic.image.convert('L'))
-tmp.shape
-plt.imshow(tmp, cmap='gray')
-tmp = 255 - tmp
-tmp[tmp >= 200] = 255
-tmp[tmp < 200] = 0
-plt.imshow(tmp, cmap='gray')
+model.save("cnn-ocr")
