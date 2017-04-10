@@ -41,6 +41,7 @@ for head in range(0xB0, 0xD7 + 1):
 
 s = s[:-5]
 
+
 class ImageChar():
 
     def __init__(self, fontColor=(255, 255, 255),
@@ -181,38 +182,108 @@ class OCRIter(mx.io.DataIter):
         pass
 
 
+# def get_ocrnet():
+#     data = mx.sym.Variable('data')
+#     label = mx.sym.Variable('softmax_label')
+#     conv1 = mx.sym.Convolution(data=data, kernel=(5, 5), num_filter=64)
+#     pool1 = mx.sym.Pooling(
+#         data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
+#     relu1 = mx.sym.Activation(data=pool1, act_type="relu")
+#
+#     conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=64)
+#     pool2 = mx.sym.Pooling(
+#         data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+#     relu2 = mx.sym.Activation(data=pool2, act_type="relu")
+#
+#     conv3 = mx.sym.Convolution(data=relu2, kernel=(3, 3), num_filter=64)
+#     pool3 = mx.sym.Pooling(
+#         data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+#     relu3 = mx.sym.Activation(data=pool3, act_type="relu")
+#
+#     conv4 = mx.sym.Convolution(data=relu3, kernel=(3, 3), num_filter=64)
+#     pool4 = mx.sym.Pooling(
+#         data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+#     relu4 = mx.sym.Activation(data=pool4, act_type="relu")
+#
+#     flatten = mx.sym.Flatten(data=relu4)
+#     fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=2048)
+#     fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=2048)
+#     fc3 = mx.sym.FullyConnected(data=flatten, num_hidden=1024)
+#     fc41 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+#     fc42 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+#     fc43 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+#     fc4 = mx.sym.Concat(*[fc41, fc42, fc43], dim=0)
+#     label = mx.sym.transpose(data=label)
+#     label = mx.sym.Reshape(data=label, target_shape=(0, ))
+#     return mx.sym.SoftmaxOutput(data=fc4, label=label, name="softmax")
+
+
+# VGG
 def get_ocrnet():
     data = mx.sym.Variable('data')
     label = mx.sym.Variable('softmax_label')
-    conv1 = mx.sym.Convolution(data=data, kernel=(5, 5), num_filter=32)
-    pool1 = mx.sym.Pooling(
-        data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
-    relu1 = mx.sym.Activation(data=pool1, act_type="relu")
+    conv1_1 = mx.sym.Convolution(data=data, kernel=(3, 3), pad=(1, 1),
+                                 no_bias=False, num_filter=64, stride=(1, 1))
+    relu1_1 = mx.sym.Activation(data=conv1_1, act_type='relu')
+    conv1_2 = mx.sym.Convolution(data=relu1_1, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=64)
+    relu1_2 = mx.sym.Activation(data=conv1_2, act_type='relu')
+    pool1 = mx.sym.Pooling(data=relu1_2, pool_type="avg",
+                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 
-    conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
-    pool2 = mx.sym.Pooling(
-        data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu2 = mx.sym.Activation(data=pool2, act_type="relu")
+    conv2_1 = mx.sym.Convolution(data=pool1, kernel=(3, 3), pad=(1, 1),
+                                 no_bias=False, num_filter=128, stride=(1, 1))
+    relu2_1 = mx.sym.Activation(data=conv2_1, act_type='relu')
+    conv2_2 = mx.sym.Convolution(data=relu2_1, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=128)
+    relu2_2 = mx.sym.Activation(data=conv2_2, act_type='relu')
+    pool2 = mx.sym.Pooling(data=relu2_2, pool_type="avg",
+                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 
-    conv3 = mx.sym.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
-    pool3 = mx.sym.Pooling(
-        data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu3 = mx.sym.Activation(data=pool3, act_type="relu")
+    conv3_1 = mx.sym.Convolution(data=pool2, kernel=(3, 3), pad=(1, 1),
+                                 no_bias=False, num_filter=256, stride=(1, 1))
+    relu3_1 = mx.sym.Activation(data=conv3_1, act_type='relu')
+    conv3_2 = mx.sym.Convolution(data=relu3_1, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=256)
+    relu3_2 = mx.sym.Activation(data=conv3_2, act_type='relu')
+    conv3_3 = mx.sym.Convolution(data=relu3_2, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=256)
+    relu3_3 = mx.sym.Activation(data=conv3_3, act_type='relu')
+    conv3_4 = mx.sym.Convolution(data=relu3_3, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=256)
+    relu3_4 = mx.sym.Activation(data=conv3_4, act_type='relu')
+    pool3 = mx.sym.Pooling(data=relu3_4, pool_type="avg",
+                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 
-    conv4 = mx.sym.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
-    pool4 = mx.sym.Pooling(
-        data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu4 = mx.sym.Activation(data=pool4, act_type="relu")
+    conv4_1 = mx.sym.Convolution(data=pool3, kernel=(3, 3), pad=(1, 1),
+                                 no_bias=False, num_filter=512, stride=(1, 1))
+    relu4_1 = mx.sym.Activation(data=conv4_1, act_type='relu')
+    conv4_2 = mx.sym.Convolution(data=relu4_1, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=512)
+    relu4_2 = mx.sym.Activation(data=conv4_2, act_type='relu')
+    conv4_3 = mx.sym.Convolution(data=relu4_2, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=512)
+    relu4_3 = mx.sym.Activation(data=conv4_3, act_type='relu')
+    conv4_4 = mx.sym.Convolution(data=relu4_3, kernel=(3, 3), pad=(1, 1),
+                                 stride=(1, 1), no_bias=False, num_filter=512)
+    relu4_4 = mx.sym.Activation(data=conv4_4, act_type='relu')
+    pool4 = mx.sym.Pooling(data=relu4_4, pool_type="avg",
+                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 
-    flatten = mx.sym.Flatten(data=relu4)
-    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=256)
-    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
-    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
-    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
-    fc2 = mx.sym.Concat(*[fc21, fc22, fc23], dim=0)
+    conv5_1 = mx.sym.Convolution(data=pool4, num_filter=512, pad=(1, 1),
+                                 kernel=(3, 3), stride=(1, 1), no_bias=False)
+    relu5_1 = mx.sym.Activation(data=conv5_1, act_type='relu')
+    flatten = mx.sym.Flatten(data=relu5_1)
+    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
+    fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
+    fc3 = mx.sym.FullyConnected(data=flatten, num_hidden=1024)
+    fc41 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+    fc42 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+    fc43 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
+    fc4 = mx.sym.Concat(*[fc41, fc42, fc43], dim=0)
     label = mx.sym.transpose(data=label)
     label = mx.sym.Reshape(data=label, target_shape=(0, ))
-    return mx.sym.SoftmaxOutput(data=fc2, label=label, name="softmax")
+    return mx.sym.SoftmaxOutput(data=fc4, label=label, name="softmax")
 
 
 def Accuracy(label, pred):
