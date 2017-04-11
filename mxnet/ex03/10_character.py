@@ -235,7 +235,7 @@ def Accuracy(label, pred):
     return hit / total
 
 
-batch_size = 64
+batch_size = 100
 data_train = OCRIter(1000000, batch_size, 3)
 data_test = OCRIter(1000, batch_size, 3)
 import logging

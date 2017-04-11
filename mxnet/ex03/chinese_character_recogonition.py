@@ -136,9 +136,6 @@ class OCRBatch(object):
     def all_data(self):
         return self.data
 
-    def all_label(self):
-        return self.label
-
 
 class OCRIter(mx.io.DataIter):
 
@@ -309,7 +306,7 @@ def Accuracy(label, pred):
     return hit / total
 
 
-batch_size = 8
+batch_size = 128
 data_train = OCRIter(32, batch_size, 3)
 for i in data_train:
     print(data_train)
@@ -331,9 +328,11 @@ model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
                       data_names=['data'], label_names=['softmax_label'])
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.01},
-          eval_metric=Accuracy, num_epoch=1,
-          batch_end_callback=mx.callback.Speedometer(batch_size, 50))
+          optimizer_params={'learning_rate': 0.001},
+          eval_metric=Accuracy, num_epoch=100,
+          batch_end_callback=mx.callback.Speedometer(batch_size, 50),
+          epoch_end_callback=mx.callback.module_checkpoint(
+              model, prefix='cnn-ocr', save_optimizer_states=True))
 
 
 if __name__ == '__main__':

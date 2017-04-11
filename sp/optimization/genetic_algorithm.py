@@ -31,11 +31,12 @@ def crossover(gene1, gene2):
 
 def mutate(gene, lowerbound, upperbound, mutation_prob):
     # 基因突变
-    for i in range(len(gene)):
+    new = gene.copy()
+    for i in range(len(new)):
         tmp = random.randint(lowerbound[i], upperbound[i])
-        if random.random() > mutation_prob[i] and gene[i] != tmp:
-            gene[i] = tmp
-    return gene
+        if random.random() > mutation_prob[i] and new[i] != tmp:
+            new[i] = tmp
+    return new
 
 
 def geneticoptimize(lowerbound, upperbound, cost,
