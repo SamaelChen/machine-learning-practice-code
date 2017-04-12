@@ -8,6 +8,7 @@ import codecs
 import matplotlib.pyplot as plt
 import numpy as np
 import mxnet as mx
+from tensorboard import summary
 
 
 class RandomChar():
@@ -186,26 +187,16 @@ def get_ocrnet():
         data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
     relu1 = mx.sym.Activation(data=pool1, act_type="relu")
 
-    conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=32)
+    conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=64)
     pool2 = mx.sym.Pooling(
         data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
     relu2 = mx.sym.Activation(data=pool2, act_type="relu")
 
-    conv3 = mx.sym.Convolution(data=relu2, kernel=(3, 3), num_filter=32)
-    pool3 = mx.sym.Pooling(
-        data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu3 = mx.sym.Activation(data=pool3, act_type="relu")
-
-    conv4 = mx.sym.Convolution(data=relu3, kernel=(3, 3), num_filter=32)
-    pool4 = mx.sym.Pooling(
-        data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-    relu4 = mx.sym.Activation(data=pool4, act_type="relu")
-
-    flatten = mx.sym.Flatten(data=relu4)
-    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=256)
-    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
-    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
-    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=94)
+    flatten = mx.sym.Flatten(data=relu2)
+    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=512)
+    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=10)
+    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=10)
+    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=10)
     fc2 = mx.sym.Concat(*[fc21, fc22, fc23], dim=0)
     label = mx.sym.transpose(data=label)
     label = mx.sym.Reshape(data=label, target_shape=(0, ))
@@ -223,9 +214,9 @@ def Accuracy(label, pred):
         for j in range(3):
             k = i * 3 + j
             # print(k)
-#             print(np.argmax(pred[k]))
-#             print(int(label[k]))
-#             print("========next========")
+            # print(np.argmax(pred[k]))
+            # print(int(label[k]))
+            # print("========next========")
             if np.argmax(pred[k]) != int(label[k]):
                 ok = False
                 break
@@ -235,17 +226,24 @@ def Accuracy(label, pred):
     return hit / total
 
 
-batch_size = 100
+batch_size = 50
+training_log = 'logs/train'
+evaluation_log = 'logs/eval'
+batch_end_callbacks = [mx.contrib.tensorboard.LogMetricsCallback(
+    training_log),
+    mx.callback.Speedometer(batch_size, 50)]
+eval_end_callbacks = [
+    mx.contrib.tensorboard.LogMetricsCallback(evaluation_log)]
 data_train = OCRIter(1000000, batch_size, 3)
-data_test = OCRIter(1000, batch_size, 3)
+data_test = OCRIter(10000, batch_size, 3)
 import logging
 logging.getLogger().setLevel(logging.DEBUG)
 model = mx.mod.Module(symbol=get_ocrnet(), context=mx.gpu(),
                       data_names=['data'], label_names=['softmax_label'])
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.001},
+          optimizer_params={'learning_rate': 0.0005},
           eval_metric=Accuracy, num_epoch=10,
-          batch_end_callback=mx.callback.Speedometer(batch_size, 50))
-
-model.save("cnn-ocr")
+          batch_end_callback=batch_end_callbacks,
+          eval_end_callback=eval_end_callbacks)
+help(mx.mon.Monitor)

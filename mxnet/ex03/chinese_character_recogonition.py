@@ -107,8 +107,6 @@ class ImageChar():
                 len(label) + random.randint(0, gap) + gap * len(label)
             self.drawTextV2((x, random.randint(-3, 2)),
                             char, (255, 255, 255))
-            # self.image.rotate(180)
-            # self.rotate()
             label.append(s.index(val))
         self.randPoint(18)
         return label
@@ -156,15 +154,12 @@ class OCRIter(mx.io.DataIter):
             label = []
             for i in range(self.batch_size):
                 ic = ImageChar()
-                # num = self.ic.randChinese(self.num_label)
                 num = ic.randChinese(self.num_label)
-                # self.ic.save(str(k) + str(i) + '.jpg')
                 # tmp = np.array(self.ic.image.convert("L"))
                 # ic.save(str(k) + str(i) + '.jpg')
                 tmp = np.array(ic.image.convert("L"))
                 tmp = (255 - tmp) / 255
                 tmp = tmp.reshape(1, 100, 20)
-                # print(tmp.shape)
                 data.append(tmp)
                 label.append(np.array(num))
             data_all = [mx.nd.array(data)]
@@ -179,32 +174,90 @@ class OCRIter(mx.io.DataIter):
         pass
 
 
+def get_ocrnet():
+    data = mx.sym.Variable('data')
+    label = mx.sym.Variable('softmax_label')
+    conv1 = mx.sym.Convolution(data=data, kernel=(5, 5), num_filter=32)
+    pool1 = mx.sym.Pooling(
+        data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
+    relu1 = mx.sym.Activation(data=pool1, act_type="relu")
+
+    conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=64)
+    pool2 = mx.sym.Pooling(
+        data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
+    relu2 = mx.sym.Activation(data=pool2, act_type="relu")
+
+    flatten = mx.sym.Flatten(data=relu2)
+    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
+    # fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=2048)
+    # fc3 = mx.sym.FullyConnected(data=flatten, num_hidden=1024)
+    fc21 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc22 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc23 = mx.sym.FullyConnected(data=fc1, num_hidden=3755)
+    fc2 = mx.sym.Concat(*[fc21, fc22, fc23], dim=0)
+    label = mx.sym.transpose(data=label)
+    label = mx.sym.Reshape(data=label, target_shape=(0, ))
+    return mx.sym.SoftmaxOutput(data=fc2, label=label, name="softmax")
+
+
+# VGG
 # def get_ocrnet():
 #     data = mx.sym.Variable('data')
 #     label = mx.sym.Variable('softmax_label')
-#     conv1 = mx.sym.Convolution(data=data, kernel=(5, 5), num_filter=64)
-#     pool1 = mx.sym.Pooling(
-#         data=conv1, pool_type="max", kernel=(2, 2), stride=(1, 1))
-#     relu1 = mx.sym.Activation(data=pool1, act_type="relu")
+#     conv1_1 = mx.sym.Convolution(data=data, kernel=(3, 3), pad=(1, 1),
+#                                  no_bias=False, num_filter=64, stride=(1, 1))
+#     relu1_1 = mx.sym.Activation(data=conv1_1, act_type='relu')
+#     conv1_2 = mx.sym.Convolution(data=relu1_1, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=64)
+#     relu1_2 = mx.sym.Activation(data=conv1_2, act_type='relu')
+#     pool1 = mx.sym.Pooling(data=relu1_2, pool_type="avg",
+#                            kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 #
-#     conv2 = mx.sym.Convolution(data=relu1, kernel=(5, 5), num_filter=64)
-#     pool2 = mx.sym.Pooling(
-#         data=conv2, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-#     relu2 = mx.sym.Activation(data=pool2, act_type="relu")
+#     conv2_1 = mx.sym.Convolution(data=pool1, kernel=(3, 3), pad=(1, 1),
+#                                  no_bias=False, num_filter=128, stride=(1, 1))
+#     relu2_1 = mx.sym.Activation(data=conv2_1, act_type='relu')
+#     conv2_2 = mx.sym.Convolution(data=relu2_1, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=128)
+#     relu2_2 = mx.sym.Activation(data=conv2_2, act_type='relu')
+#     pool2 = mx.sym.Pooling(data=relu2_2, pool_type="avg",
+#                            kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 #
-#     conv3 = mx.sym.Convolution(data=relu2, kernel=(3, 3), num_filter=64)
-#     pool3 = mx.sym.Pooling(
-#         data=conv3, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-#     relu3 = mx.sym.Activation(data=pool3, act_type="relu")
+#     conv3_1 = mx.sym.Convolution(data=pool2, kernel=(3, 3), pad=(1, 1),
+#                                  no_bias=False, num_filter=256, stride=(1, 1))
+#     relu3_1 = mx.sym.Activation(data=conv3_1, act_type='relu')
+#     conv3_2 = mx.sym.Convolution(data=relu3_1, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=256)
+#     relu3_2 = mx.sym.Activation(data=conv3_2, act_type='relu')
+#     conv3_3 = mx.sym.Convolution(data=relu3_2, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=256)
+#     relu3_3 = mx.sym.Activation(data=conv3_3, act_type='relu')
+#     conv3_4 = mx.sym.Convolution(data=relu3_3, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=256)
+#     relu3_4 = mx.sym.Activation(data=conv3_4, act_type='relu')
+#     pool3 = mx.sym.Pooling(data=relu3_4, pool_type="avg",
+#                            kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 #
-#     conv4 = mx.sym.Convolution(data=relu3, kernel=(3, 3), num_filter=64)
-#     pool4 = mx.sym.Pooling(
-#         data=conv4, pool_type="avg", kernel=(2, 2), stride=(1, 1))
-#     relu4 = mx.sym.Activation(data=pool4, act_type="relu")
+#     conv4_1 = mx.sym.Convolution(data=pool3, kernel=(3, 3), pad=(1, 1),
+#                                  no_bias=False, num_filter=512, stride=(1, 1))
+#     relu4_1 = mx.sym.Activation(data=conv4_1, act_type='relu')
+#     conv4_2 = mx.sym.Convolution(data=relu4_1, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=512)
+#     relu4_2 = mx.sym.Activation(data=conv4_2, act_type='relu')
+#     conv4_3 = mx.sym.Convolution(data=relu4_2, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=512)
+#     relu4_3 = mx.sym.Activation(data=conv4_3, act_type='relu')
+#     conv4_4 = mx.sym.Convolution(data=relu4_3, kernel=(3, 3), pad=(1, 1),
+#                                  stride=(1, 1), no_bias=False, num_filter=512)
+#     relu4_4 = mx.sym.Activation(data=conv4_4, act_type='relu')
+#     pool4 = mx.sym.Pooling(data=relu4_4, pool_type="avg",
+#                            kernel=(2, 2), stride=(2, 2), pad=(0, 0))
 #
-#     flatten = mx.sym.Flatten(data=relu4)
-#     fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=2048)
-#     fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=2048)
+#     conv5_1 = mx.sym.Convolution(data=pool4, num_filter=512, pad=(1, 1),
+#                                  kernel=(3, 3), stride=(1, 1), no_bias=False)
+#     relu5_1 = mx.sym.Activation(data=conv5_1, act_type='relu')
+#     flatten = mx.sym.Flatten(data=relu5_1)
+#     fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
+#     fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
 #     fc3 = mx.sym.FullyConnected(data=flatten, num_hidden=1024)
 #     fc41 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
 #     fc42 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
@@ -215,88 +268,14 @@ class OCRIter(mx.io.DataIter):
 #     return mx.sym.SoftmaxOutput(data=fc4, label=label, name="softmax")
 
 
-# VGG
-def get_ocrnet():
-    data = mx.sym.Variable('data')
-    label = mx.sym.Variable('softmax_label')
-    conv1_1 = mx.sym.Convolution(data=data, kernel=(3, 3), pad=(1, 1),
-                                 no_bias=False, num_filter=64, stride=(1, 1))
-    relu1_1 = mx.sym.Activation(data=conv1_1, act_type='relu')
-    conv1_2 = mx.sym.Convolution(data=relu1_1, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=64)
-    relu1_2 = mx.sym.Activation(data=conv1_2, act_type='relu')
-    pool1 = mx.sym.Pooling(data=relu1_2, pool_type="avg",
-                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
-
-    conv2_1 = mx.sym.Convolution(data=pool1, kernel=(3, 3), pad=(1, 1),
-                                 no_bias=False, num_filter=128, stride=(1, 1))
-    relu2_1 = mx.sym.Activation(data=conv2_1, act_type='relu')
-    conv2_2 = mx.sym.Convolution(data=relu2_1, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=128)
-    relu2_2 = mx.sym.Activation(data=conv2_2, act_type='relu')
-    pool2 = mx.sym.Pooling(data=relu2_2, pool_type="avg",
-                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
-
-    conv3_1 = mx.sym.Convolution(data=pool2, kernel=(3, 3), pad=(1, 1),
-                                 no_bias=False, num_filter=256, stride=(1, 1))
-    relu3_1 = mx.sym.Activation(data=conv3_1, act_type='relu')
-    conv3_2 = mx.sym.Convolution(data=relu3_1, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=256)
-    relu3_2 = mx.sym.Activation(data=conv3_2, act_type='relu')
-    conv3_3 = mx.sym.Convolution(data=relu3_2, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=256)
-    relu3_3 = mx.sym.Activation(data=conv3_3, act_type='relu')
-    conv3_4 = mx.sym.Convolution(data=relu3_3, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=256)
-    relu3_4 = mx.sym.Activation(data=conv3_4, act_type='relu')
-    pool3 = mx.sym.Pooling(data=relu3_4, pool_type="avg",
-                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
-
-    conv4_1 = mx.sym.Convolution(data=pool3, kernel=(3, 3), pad=(1, 1),
-                                 no_bias=False, num_filter=512, stride=(1, 1))
-    relu4_1 = mx.sym.Activation(data=conv4_1, act_type='relu')
-    conv4_2 = mx.sym.Convolution(data=relu4_1, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=512)
-    relu4_2 = mx.sym.Activation(data=conv4_2, act_type='relu')
-    conv4_3 = mx.sym.Convolution(data=relu4_2, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=512)
-    relu4_3 = mx.sym.Activation(data=conv4_3, act_type='relu')
-    conv4_4 = mx.sym.Convolution(data=relu4_3, kernel=(3, 3), pad=(1, 1),
-                                 stride=(1, 1), no_bias=False, num_filter=512)
-    relu4_4 = mx.sym.Activation(data=conv4_4, act_type='relu')
-    pool4 = mx.sym.Pooling(data=relu4_4, pool_type="avg",
-                           kernel=(2, 2), stride=(2, 2), pad=(0, 0))
-
-    conv5_1 = mx.sym.Convolution(data=pool4, num_filter=512, pad=(1, 1),
-                                 kernel=(3, 3), stride=(1, 1), no_bias=False)
-    relu5_1 = mx.sym.Activation(data=conv5_1, act_type='relu')
-    flatten = mx.sym.Flatten(data=relu5_1)
-    fc1 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
-    fc2 = mx.sym.FullyConnected(data=flatten, num_hidden=4096)
-    fc3 = mx.sym.FullyConnected(data=flatten, num_hidden=1024)
-    fc41 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
-    fc42 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
-    fc43 = mx.sym.FullyConnected(data=fc3, num_hidden=3755)
-    fc4 = mx.sym.Concat(*[fc41, fc42, fc43], dim=0)
-    label = mx.sym.transpose(data=label)
-    label = mx.sym.Reshape(data=label, target_shape=(0, ))
-    return mx.sym.SoftmaxOutput(data=fc4, label=label, name="softmax")
-
-
 def Accuracy(label, pred):
     label = label.T.reshape((-1, ))
     hit = 0
     total = 0
-    # print(pred)
-    # print(pred.shape)
     for i in range(int(pred.shape[0] / 3)):
         ok = True
         for j in range(3):
             k = i * 3 + j
-            # print(k)
-            print(np.argmax(pred[k]))
-            print(int(label[k]))
-            print("========")
             if np.argmax(pred[k]) != int(label[k]):
                 ok = False
                 break
@@ -306,86 +285,17 @@ def Accuracy(label, pred):
     return hit / total
 
 
-batch_size = 128
-data_train = OCRIter(32, batch_size, 3)
-for i in data_train:
-    print(data_train)
-type(i)
-i.provide_data
-i.provide_label
-tmp = i.all_label()
-tmp[0][0].asnumpy()
-tmp[0].reshape((24, ))[0:10].asnumpy()
-help(mx.sym.transpose)
-mx.ndarray.transpose(tmp[0])
-tmp[0].shape
-type(tmp[0])
-data_train = OCRIter(100, batch_size, 3)
-data_test = OCRIter(10, batch_size, 3)
+batch_size = 100
+data_train = OCRIter(100000, batch_size, 3)
+data_test = OCRIter(1000, batch_size, 3)
 shape = {"data": (batch_size, 1, 100, 20), "softmax_label": (batch_size, 3)}
 mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
 model = mx.mod.Module(symbol=get_ocrnet(), context=mx.cpu(),
                       data_names=['data'], label_names=['softmax_label'])
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
-          optimizer_params={'learning_rate': 0.001},
-          eval_metric=Accuracy, num_epoch=100,
+          optimizer_params={'learning_rate': 0.0005},
+          eval_metric=Accuracy, num_epoch=500,
           batch_end_callback=mx.callback.Speedometer(batch_size, 50),
           epoch_end_callback=mx.callback.module_checkpoint(
               model, prefix='cnn-ocr', save_optimizer_states=True))
-
-
-if __name__ == '__main__':
-    network = get_ocrnet()
-    # devs = [mx.gpu(i) for i in range(1)]
-    model = mx.model.FeedForward(ctx=mx.cpu(),
-                                 symbol=network,
-                                 num_epoch=2,
-                                 learning_rate=0.001,
-                                 wd=0.00001,
-                                 initializer=mx.init.Xavier(
-                                     factor_type="in", magnitude=2.34),
-                                 momentum=0.9)
-
-    batch_size = 8
-    data_train = OCRIter(100000, batch_size, 3)
-    data_test = OCRIter(1000, batch_size, 3)
-
-    import logging
-    head = '%(asctime)-15s %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=head)
-
-    model.fit(X=data_train, eval_data=data_test, eval_metric=Accuracy,
-              batch_end_callback=mx.callback.Speedometer(batch_size, 50),)
-
-    model.save("cnn-ocr")
-
-
-batch_size = 8
-data_train = OCRIter(80, batch_size, 3)
-data_train.provide_data
-for i in data_train:
-    print(data_train)
-
-data_train.getdata()
-
-RandomChar().GB2312()
-RandomChar().Unicode()
-ic = ImageChar(fontPath='ukai.ttc')
-ic.randChinese(3)
-ic.image
-tmp = np.array(ic.image)
-tmp.shape
-a = []
-for i in range(100):
-    a.append(ic.randChinese(3))
-a
-plt.imshow(ic.image, cmap='gray')
-plt.imshow(np.array(ic.image), cmap='gray')
-tmp = np.array(ic.image.convert('L'))
-tmp.shape
-plt.imshow(tmp, cmap='gray')
-tmp = 255 - tmp
-tmp[tmp >= 200] = 255
-tmp[tmp < 200] = 0
-plt.imshow(tmp, cmap='gray')
