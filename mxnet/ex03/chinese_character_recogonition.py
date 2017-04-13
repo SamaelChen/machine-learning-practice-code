@@ -19,17 +19,12 @@ class RandomChar():
 
     @staticmethod
     def GB2312():
-        # head = random.randint(0xB0, 0xCF)
-        # body = random.randint(0xA, 0xF)
-        # tail = random.randint(0, 0xF)
-        # val = (head &lt; &lt; 8) | (body & lt; & lt; 4) | tail
         head = random.randint(0xB0, 0xD7)
         body = random.randint(0xA1, 0xFE)
         val = (head << 8) | body
         str = "%x" % val
         str = codecs.decode(str, 'hex')
         str = str.decode('gb2312')
-        # return str.decode('hex').decode('gb2312')
         return str, val
 
 

@@ -30,7 +30,6 @@ class RandomChar():
         str = "%x" % val
         str = codecs.decode(str, 'hex')
         str = str.decode('gb2312')
-        # return str.decode('hex').decode('gb2312')
         return str, val
 
 
@@ -102,7 +101,6 @@ class ImageChar():
             try:
                 char, val = RandomChar().GB2312()
             except UnicodeDecodeError:
-                # print(len(label))
                 continue
             x = start + self.fontSize * \
                 len(label) + random.randint(0, gap) + gap * len(label)
@@ -156,15 +154,11 @@ class OCRIter(mx.io.DataIter):
             label = []
             for i in range(self.batch_size):
                 ic = ImageChar(fontPath='/home/plkj/ukai.ttc')
-                # num = self.ic.randChinese(self.num_label)
                 num = ic.randChinese(self.num_label)
-                # self.ic.save(str(k) + str(i) + '.jpg')
-                # tmp = np.array(self.ic.image.convert("L"))
                 # ic.save(str(k) + str(i) + '.jpg')
                 tmp = np.array(ic.image.convert("L"))
                 tmp = 255 - tmp
                 tmp = tmp.reshape(1, 100, 20)
-                # print(tmp.shape)
                 data.append(tmp)
                 label.append(np.array(num))
             data_all = [mx.nd.array(data)]
@@ -207,16 +201,10 @@ def Accuracy(label, pred):
     label = label.T.reshape((-1, ))
     hit = 0
     total = 0
-    # print(pred)
-    # print(pred.shape)
     for i in range(int(pred.shape[0] / 3)):
         ok = True
         for j in range(3):
             k = i * 3 + j
-            # print(k)
-            # print(np.argmax(pred[k]))
-            # print(int(label[k]))
-            # print("========next========")
             if np.argmax(pred[k]) != int(label[k]):
                 ok = False
                 break
@@ -227,15 +215,10 @@ def Accuracy(label, pred):
 
 
 batch_size = 50
-training_log = 'logs/train'
-evaluation_log = 'logs/eval'
-batch_end_callbacks = [mx.contrib.tensorboard.LogMetricsCallback(
-    training_log),
-    mx.callback.Speedometer(batch_size, 50)]
-eval_end_callbacks = [
-    mx.contrib.tensorboard.LogMetricsCallback(evaluation_log)]
 data_train = OCRIter(1000000, batch_size, 3)
 data_test = OCRIter(10000, batch_size, 3)
+shape = {"data": (batch_size, 1, 100, 20), "softmax_label": (batch_size, 3)}
+mx.viz.plot_network(symbol=get_ocrnet(), shape=shape)
 import logging
 logging.getLogger().setLevel(logging.DEBUG)
 model = mx.mod.Module(symbol=get_ocrnet(), context=mx.gpu(),
@@ -243,7 +226,7 @@ model = mx.mod.Module(symbol=get_ocrnet(), context=mx.gpu(),
 
 model.fit(train_data=data_train, eval_data=data_test, optimizer='sgd',
           optimizer_params={'learning_rate': 0.0005},
-          eval_metric=Accuracy, num_epoch=10,
-          batch_end_callback=batch_end_callbacks,
-          eval_end_callback=eval_end_callbacks)
-help(mx.mon.Monitor)
+          eval_metric=Accuracy, num_epoch=100,
+          batch_end_callback=mx.callback.Speedometer(batch_size, 50),
+          epoch_end_callback=mx.callback.module_checkpoint(
+              model, prefix='cnn-ocr', save_optimizer_states=True))
