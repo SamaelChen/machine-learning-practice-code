@@ -18,7 +18,8 @@ def getBinaryArrayAndLabels(numberrows, numbBinDigits):
     (for instance 4 digits generate 16 vals ->0000 to 1111)
     :param numberrows: how many rows of data
     :param numbBinDigits: how many binary digits
-    :return: a train array shape(numberrows, numbBinDigits) , and a label array(shape(numberrows,)
+    :return: a train array shape(numberrows, numbBinDigits),
+    and a label array(shape(numberrows,)
     '''
     largestBinNumb = 2**numbBinDigits
     binStringStartsHere = 2
