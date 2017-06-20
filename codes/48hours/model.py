@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import xgboost as xgb
 import re
 import gc
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report
 
 pd.options.display.max_columns = None
 # ---dm9 start--- #
@@ -97,7 +100,7 @@ parameters = {'nthread': [4],
               'objective': ['binary:logistic'],
               'learning_rate': [0.05],
               'max_depth': [5, 6],
-              'min_child_weight': [3],
+              'min_child_weight': [3, 4, 5, 10],
               'subsample': [0.7],
               'colsample_bytree': [0.7],
               'n_estimators': [100],
@@ -113,3 +116,20 @@ best_parameters, score, _ = max(clf.grid_scores_, key=lambda x: x[1])
 print('Raw AUC Score: ', score)
 y_pred = clf.predict(X.iloc[:, :209])
 confusion_matrix(X['y'], y_pred)
+
+X_train, X_test = train_test_split(X, test_size=0.33, random_state=20170620)
+bdt = AdaBoostClassifier(DecisionTreeClassifier(max_depth=20,
+                                                min_samples_leaf=100,
+                                                max_features=150,
+                                                criterion='gini',
+                                                class_weight='balanced'),
+                         algorithm="SAMME",
+                         n_estimators=100,
+                         learning_rate=1)
+bdt.fit(X_train.iloc[:, :209], X_train['y'])
+y_train_pred = bdt.predict(X_train.iloc[:, :209])
+y_test_pred = bdt.predict(X_test.iloc[:, :209])
+print(classification_report(X_train['y'], y_train_pred))
+confusion_matrix(X_train['y'], y_train_pred)
+print(classification_report(X_test['y'], y_test_pred))
+confusion_matrix(X_test['y'], y_test_pred)
