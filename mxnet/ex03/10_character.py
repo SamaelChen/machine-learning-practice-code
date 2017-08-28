@@ -42,6 +42,7 @@ for head in range(0xB0, 0xB1):
 # s = s[:-5]
 len(s)
 
+
 class ImageChar():
 
     def __init__(self, fontColor=(255, 255, 255),
