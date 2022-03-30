@@ -1,0 +1,3 @@
+[submodule "d2l"]
+	path = d2l
+	url = https://github.com/SamaelChen/d2l.git
